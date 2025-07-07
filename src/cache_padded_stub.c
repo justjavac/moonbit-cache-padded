@@ -3,6 +3,13 @@
 #include <stdbool.h>
 #include <string.h>
 
+// Windows-specific exports
+#ifdef _WIN32
+#define EXPORT __declspec(dllexport)
+#else
+#define EXPORT
+#endif
+
 // Cache line size constants
 #define CACHE_LINE_SIZE 64
 #define CACHE_LINE_MASK (CACHE_LINE_SIZE - 1)
@@ -21,7 +28,7 @@ static void* align_to_cache_line(void* ptr) {
 }
 
 // Create a new cache-padded integer
-int64_t moonbit_cache_padded_new_int(int value) {
+EXPORT int64_t moonbit_cache_padded_new_int(int value) {
     // Allocate extra space to ensure we can align to cache line
     void* raw_ptr = malloc(sizeof(cache_padded_int_t) + CACHE_LINE_SIZE);
     if (!raw_ptr) {
@@ -42,7 +49,7 @@ int64_t moonbit_cache_padded_new_int(int value) {
 }
 
 // Get value from cache-padded integer
-int moonbit_cache_padded_get_int(int64_t ptr) {
+EXPORT int moonbit_cache_padded_get_int(int64_t ptr) {
     if (ptr == 0) {
         return 0; // Handle null pointer
     }
@@ -52,7 +59,7 @@ int moonbit_cache_padded_get_int(int64_t ptr) {
 }
 
 // Set value in cache-padded integer
-void moonbit_cache_padded_set_int(int64_t ptr, int value) {
+EXPORT void moonbit_cache_padded_set_int(int64_t ptr, int value) {
     if (ptr == 0) {
         return; // Handle null pointer
     }
@@ -62,7 +69,7 @@ void moonbit_cache_padded_set_int(int64_t ptr, int value) {
 }
 
 // Destroy cache-padded integer
-void moonbit_cache_padded_destroy(int64_t ptr) {
+EXPORT void moonbit_cache_padded_destroy(int64_t ptr) {
     if (ptr == 0) {
         return; // Handle null pointer
     }
@@ -77,6 +84,6 @@ void moonbit_cache_padded_destroy(int64_t ptr) {
 }
 
 // Get cache line size
-int moonbit_cache_padded_get_cache_line_size(void) {
+EXPORT int moonbit_cache_padded_get_cache_line_size(void) {
     return CACHE_LINE_SIZE;
 }
