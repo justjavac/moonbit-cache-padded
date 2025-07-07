@@ -1,0 +1,10 @@
+{
+  "supported-targets": ["native"],
+  "targets": {
+    "cache_padded.mbt": ["native"],
+    "cache_padded_test.mbt": ["native"]
+  },
+  "native-stub": [
+    "cache_padded_stub.c"
+  ]
+}

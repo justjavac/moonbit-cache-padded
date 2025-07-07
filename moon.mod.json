@@ -1,0 +1,17 @@
+{
+  "name": "justjavac/cache_padded",
+  "version": "0.1.0",
+  "readme": "README.md",
+  "repository": "https://github.com/justjavac/moonbit-cache-padded",
+  "license": "MIT",
+  "keywords": [
+    "cache",
+    "padding",
+    "performance",
+    "concurrency",
+    "cache-line",
+    "optimization"
+  ],
+  "description": "Cache-padded data structures for MoonBit to reduce false sharing",
+  "source": "src"
+}
