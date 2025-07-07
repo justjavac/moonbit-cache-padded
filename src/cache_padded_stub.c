@@ -1,14 +1,8 @@
+#include "moonbit.h"
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
-
-// Windows-specific exports
-#ifdef _WIN32
-#define EXPORT __declspec(dllexport)
-#else
-#define EXPORT
-#endif
 
 // Cache line size constants
 #define CACHE_LINE_SIZE 64
@@ -16,8 +10,8 @@
 
 // Structure for cache-padded integer
 typedef struct {
-    int value;
-    char padding[CACHE_LINE_SIZE - sizeof(int)];
+    int32_t value;
+    char padding[CACHE_LINE_SIZE - sizeof(int32_t)];
 } cache_padded_int_t;
 
 // Align pointer to cache line boundary
@@ -28,7 +22,7 @@ static void* align_to_cache_line(void* ptr) {
 }
 
 // Create a new cache-padded integer
-EXPORT int64_t moonbit_cache_padded_new_int(int value) {
+MOONBIT_FFI_EXPORT int64_t moonbit_cache_padded_new_int(int32_t value) {
     // Allocate extra space to ensure we can align to cache line
     void* raw_ptr = malloc(sizeof(cache_padded_int_t) + CACHE_LINE_SIZE);
     if (!raw_ptr) {
@@ -41,15 +35,19 @@ EXPORT int64_t moonbit_cache_padded_new_int(int value) {
     // Initialize the value
     aligned_ptr->value = value;
     
-    // Store the original pointer in the padding area for later free()
-    // This is a bit hacky but works for this simple implementation
-    *((void**)&aligned_ptr->padding[0]) = raw_ptr;
+    // Clear padding to ensure clean memory
+    memset(aligned_ptr->padding, 0, sizeof(aligned_ptr->padding));
+    
+    // Store the original pointer in the first sizeof(void*) bytes of padding for later free()
+    // We ensure we have enough padding space since cache lines are at least 64 bytes
+    // and we only use 4 bytes for the int32_t value
+    memcpy(aligned_ptr->padding, &raw_ptr, sizeof(void*));
     
     return (int64_t)aligned_ptr;
 }
 
 // Get value from cache-padded integer
-EXPORT int moonbit_cache_padded_get_int(int64_t ptr) {
+MOONBIT_FFI_EXPORT int32_t moonbit_cache_padded_get_int(int64_t ptr) {
     if (ptr == 0) {
         return 0; // Handle null pointer
     }
@@ -59,7 +57,7 @@ EXPORT int moonbit_cache_padded_get_int(int64_t ptr) {
 }
 
 // Set value in cache-padded integer
-EXPORT void moonbit_cache_padded_set_int(int64_t ptr, int value) {
+MOONBIT_FFI_EXPORT void moonbit_cache_padded_set_int(int64_t ptr, int32_t value) {
     if (ptr == 0) {
         return; // Handle null pointer
     }
@@ -69,7 +67,7 @@ EXPORT void moonbit_cache_padded_set_int(int64_t ptr, int value) {
 }
 
 // Destroy cache-padded integer
-EXPORT void moonbit_cache_padded_destroy(int64_t ptr) {
+MOONBIT_FFI_EXPORT void moonbit_cache_padded_destroy(int64_t ptr) {
     if (ptr == 0) {
         return; // Handle null pointer
     }
@@ -77,13 +75,14 @@ EXPORT void moonbit_cache_padded_destroy(int64_t ptr) {
     cache_padded_int_t* cache_padded = (cache_padded_int_t*)ptr;
     
     // Retrieve the original pointer from the padding area
-    void* raw_ptr = *((void**)&cache_padded->padding[0]);
+    void* raw_ptr;
+    memcpy(&raw_ptr, cache_padded->padding, sizeof(void*));
     
     // Free the original allocated memory
     free(raw_ptr);
 }
 
 // Get cache line size
-EXPORT int moonbit_cache_padded_get_cache_line_size(void) {
+MOONBIT_FFI_EXPORT int32_t moonbit_cache_padded_get_cache_line_size(void) {
     return CACHE_LINE_SIZE;
 }
