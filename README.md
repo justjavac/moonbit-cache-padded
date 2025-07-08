@@ -1,30 +1,14 @@
 # moonbit-cache-padded
 
-A MoonBit library that provides cache-padded data structures to reduce false sharing in multi-threaded applications.
+~~A MoonBit library that provides cache-padded data structures to reduce false sharing in multi-threaded applications.~~
+
+**⚠ BUT: This library currently requires runtime overhead due to MoonBit's limitations in compile-time alignment and struct layout stability.**
+
+---------------
 
 ## Overview
 
 False sharing occurs when multiple threads access different variables that happen to reside on the same cache line, causing unnecessary cache invalidation and performance degradation. This library provides cache-padded wrappers that ensure each value occupies its own cache line.
-
-## Features
-
-- **Cache-line padding**: Ensures data structures are aligned to cache line boundaries
-- **Cross-platform**: Automatically detects and uses the correct cache line size
-- **Memory efficient**: Only adds padding when necessary for performance
-- **Thread-safe**: Reduces contention between threads accessing different padded values
-- **FFI-based implementation**: Uses native C code for optimal performance
-
-## Installation
-
-Add this to your `moon.mod.json`:
-
-```json
-{
-  "deps": {
-    "justjavac/cache_padded": "*"
-  }
-}
-```
 
 ## Usage
 
@@ -46,12 +30,64 @@ padded_counter.update(fn(x) { x * 2 })
 padded_counter.destroy()
 ```
 
-## Performance Benefits
+## Why Not Zero-Cost Abstraction?
 
-Cache padding is particularly useful in scenarios where:
-- Multiple threads frequently access different variables
-- Variables are used in tight loops or performance-critical code
-- You want to avoid false sharing between CPU cores
+Unlike Rust's `CachePadded` which achieves true zero-cost abstraction through compile-time alignment, this MoonBit implementation currently requires runtime overhead. Here's why:
+
+### Current MoonBit Limitations
+
+1. **No Compile-Time Alignment Attributes**: MoonBit currently lacks compile-time alignment directives like Rust's `repr(align(N))` or C++'s `alignas`. There's no way to specify cache line alignment at the type level.
+
+2. **Unstable Struct Layout**: According to MoonBit's FFI documentation, "The layout of `struct`/`enum` with payload is currently unstable." This means:
+   - The compiler may reorder struct fields
+   - Padding size and position are unpredictable
+   - Memory layout cannot be guaranteed
+
+3. **FFI Dependency**: To achieve proper cache alignment, we must use C FFI, which introduces:
+   - Runtime heap allocation (`malloc`)
+   - Function call overhead across language boundaries
+   - Manual memory management requirements
+   - Cross-language performance penalties
+
+### Comparison with Rust's Zero-Cost Implementation
+
+| Feature | Rust `CachePadded` | This MoonBit Implementation |
+|---------|-------------------|----------------------------|
+| **Memory Allocation** | Stack allocation | Heap allocation (`malloc`) |
+| **Alignment Method** | Compile-time `repr(align)` | Runtime pointer calculation |
+| **Access Overhead** | Zero-cost (`Deref` trait) | FFI function calls |
+| **Memory Management** | Automatic cleanup | Manual `destroy()` required |
+| **Space Overhead** | Exact padding calculation | Extra cache line allocation |
+
+### Rust's Zero-Cost Example
+
+```rust
+// Rust achieves true zero-cost abstraction
+#[repr(align(64))]
+pub struct CachePadded<T> {
+    value: T,
+}
+
+// Stack allocated, compile-time aligned, zero runtime overhead
+let padded = CachePadded::new(42);  // No malloc!
+let value = *padded;  // Direct memory access, no function call!
+```
+
+### Future Possibilities
+
+MoonBit may eventually support zero-cost cache padding through:
+- **Compiler intrinsics**: Built-in alignment functions
+- **Attribute system**: Compile-time alignment directives like `#[repr(align = 64)]`
+- **Generic specialization**: Compiler-optimized specialization for specific types
+
+### When to Use This Library
+
+Despite the runtime overhead, this implementation provides significant value when:
+- **High contention scenarios**: Performance gains (5-20x) outweigh allocation costs
+- **Long-lived objects**: Allocation cost amortized over object lifetime
+- **Critical sections**: Preventing false sharing is more important than allocation overhead
+
+The trade-off is justified in multi-threaded scenarios where false sharing elimination provides substantial performance benefits that exceed the FFI and allocation costs.
 
 ## Memory Layout
 
@@ -66,29 +102,6 @@ let b = 2  // Might be on same cache line as 'a'
 let padded_a = CachePaddedInt::new(1)
 let padded_b = CachePaddedInt::new(2)  // Guaranteed on different cache line
 ```
-
-## API Reference
-
-### `CachePaddedInt`
-
-A cache-padded wrapper for integer values.
-
-#### Methods
-
-- `CachePaddedInt::new(value: Int) -> CachePaddedInt` - Create a new padded integer
-- `get(self: CachePaddedInt) -> Int` - Get the current value
-- `set(self: CachePaddedInt, value: Int) -> Unit` - Set a new value
-- `update(self: CachePaddedInt, f: (Int) -> Int) -> Unit` - Update using a function
-- `destroy(self: CachePaddedInt) -> Unit` - Clean up memory
-
-### Utility Functions
-
-- `get_cache_line_size() -> Int` - Get the system cache line size in bytes
-
-## Requirements
-
-- MoonBit toolchain with native target support
-- C compiler (GCC or compatible) for FFI compilation
 
 ## Development
 
