@@ -103,6 +103,19 @@ let padded_a = CachePaddedInt::new(1)
 let padded_b = CachePaddedInt::new(2)  // Guaranteed on different cache line
 ```
 
+### Verification of Cache Line Alignment
+
+The implementation guarantees cache line alignment through:
+
+1. **64-byte allocation**: Each `CachePaddedInt` occupies exactly one cache line (64 bytes)
+2. **Pointer alignment**: Memory addresses are aligned to cache line boundaries using bitwise operations
+3. **Padding calculation**: Automatic padding ensures no two instances share a cache line
+
+You can verify the cache line size your system uses:
+```moonbit
+let cache_size = get_cache_line_size()  // Returns 64 on most modern systems
+```
+
 ## Development
 
 ```bash
